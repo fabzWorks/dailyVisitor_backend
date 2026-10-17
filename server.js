@@ -9,6 +9,7 @@ async function startServer() {
   const dbPassword = process.env.DB_PASSWORD || '';
   const dbHost = process.env.DB_HOST || 'localhost';
   const dbPort = Number(process.env.DB_PORT) || 3306;
+  const dbSsl = process.env.DB_SSL === 'true';   // cloud MySQL ke liye true, local ke liye khali
 
   try {
     // 1. Sab se pehle raw connection se database create karein (agar nahi hai)
@@ -17,6 +18,7 @@ async function startServer() {
       port: dbPort,
       user: dbUser,
       password: dbPassword,
+      ssl: dbSsl ? { rejectUnauthorized: false } : undefined,
     });
     await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
     await connection.end();

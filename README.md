@@ -56,3 +56,25 @@ Model (column) badalne ke baad ek baar `DB_ALTER=true npm start` chalayein, phir
 | GET  | /api/deliveries/:role/:userId | pichle 90 din ki delivery state |
 | POST | /api/deliveries/:id/note | resident ka note |
 | POST | /api/skips | resident service skip kare |
+
+
+PORT=4000
+FRONTEND_URL=http://localhost:3000
+
+# MySQL Workbench ki connection wali same settings
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD='123Qwe#$&()'
+DB_NAME=aliDaliyVisit
+
+# Model (column) badalne ke baad aik baar true karke chalayein, phir wapis false
+DB_ALTER=false
+
+for cloud
+DB_HOST="some string"
+DB_PORT=13549
+DB_USER=name
+DB_PASSWORD='yahan_password_paste_karo'
+DB_NAME=defaultdb
+DB_SSL=true

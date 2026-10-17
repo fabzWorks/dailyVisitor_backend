@@ -13,6 +13,8 @@ const sequelize = new Sequelize(
     port: Number(process.env.DB_PORT) || 3306,
     dialect: 'mysql',
     logging: false,
+    // Cloud MySQL (Aiven etc.) ke liye .env main DB_SSL=true likhein. Local MySQL par ye line na likhein.
+    dialectOptions: process.env.DB_SSL === 'true' ? { ssl: { rejectUnauthorized: false } } : {},
     pool: { max: 10, min: 0, acquire: 30000, idle: 10000 },
   }
 );
