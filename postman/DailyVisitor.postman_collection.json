@@ -1,0 +1,1437 @@
+{
+  "info": {
+    "name": "Daily Visitor API",
+    "description": "Poori flow ek hi baar test karne ke liye. Collection ko upar se 'Run collection' karein (ya folders ko is tarteeb se chalayein: Health > Auth > Requests > Notifications > Subscriptions > Deliveries > Skips). Saari ids (residentId, providerId, requestId, subscriptionId, deliveryId) khud save hoti hain.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "function fmt(d){ const p = n => String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }",
+          "const t = new Date(); const tm = new Date(); tm.setDate(t.getDate()+1);",
+          "pm.collectionVariables.set('today', fmt(t));",
+          "pm.collectionVariables.set('tomorrow', fmt(tm));",
+          "pm.collectionVariables.set('startDate', fmt(tm));"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000/api"
+    },
+    {
+      "key": "residentEmail",
+      "value": "resident@gmail.com"
+    },
+    {
+      "key": "providerEmail",
+      "value": "provider@gmail.com"
+    },
+    {
+      "key": "residentId",
+      "value": ""
+    },
+    {
+      "key": "providerId",
+      "value": ""
+    },
+    {
+      "key": "requestId",
+      "value": ""
+    },
+    {
+      "key": "subscriptionId",
+      "value": ""
+    },
+    {
+      "key": "deliveryId",
+      "value": ""
+    },
+    {
+      "key": "today",
+      "value": ""
+    },
+    {
+      "key": "tomorrow",
+      "value": ""
+    },
+    {
+      "key": "startDate",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP status ok', function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "const json = pm.response.json();",
+                  "pm.test('success = true', function () { pm.expect(json.success).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Auth",
+      "item": [
+        {
+          "name": "1. Signup Resident",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/signup/resident",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "signup",
+                "resident"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Resident\",\n  \"email\": \"{{residentEmail}}\",\n  \"password\": \"12345678\",\n  \"confirmPassword\": \"12345678\",\n  \"contact\": \"03001234567\",\n  \"gender\": \"male\",\n  \"latitude\": 33.6007,\n  \"longitude\": 73.0679,\n  \"country\": \"Pakistan\",\n  \"province\": \"Punjab\",\n  \"city\": \"Rawalpindi\",\n  \"area\": \"Satellite Town\",\n  \"address\": \"Street 5\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Nayi unique email khud ban jati hai. residentId automatic save hoti hai."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('residentEmail', 'res' + Date.now() + '@gmail.com');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP status ok', function () { pm.expect(pm.response.code).to.be.oneOf([201]); });",
+                  "const json = pm.response.json();",
+                  "pm.test('success = true', function () { pm.expect(json.success).to.eql(true); });",
+                  "pm.collectionVariables.set('residentId', json.user.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Signup Provider (Milkman)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/signup/provider",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "signup",
+                "provider"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Milkman\",\n  \"email\": \"{{providerEmail}}\",\n  \"password\": \"12345678\",\n  \"confirmPassword\": \"12345678\",\n  \"contact\": \"03111234567\",\n  \"gender\": \"male\",\n  \"latitude\": 33.61,\n  \"longitude\": 73.07,\n  \"country\": \"Pakistan\",\n  \"province\": \"Punjab\",\n  \"city\": \"Rawalpindi\",\n  \"area\": \"Satellite Town\",\n  \"service\": \"milkman\",\n  \"products\": [\n    {\n      \"name\": \"cow\",\n      \"price\": 200\n    },\n    {\n      \"name\": \"butter\",\n      \"price\": 900\n    }\n  ],\n  \"days\": [\n    \"Mon\",\n    \"Tue\",\n    \"Wed\",\n    \"Thu\",\n    \"Fri\",\n    \"Sat\",\n    \"Sun\"\n  ],\n  \"timeSlots\": [\n    {\n      \"from\": \"06:00\",\n      \"to\": \"10:00\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "providerId automatic save hoti hai."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('providerEmail', 'prov' + Date.now() + '@gmail.com');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP status ok', function () { pm.expect(pm.response.code).to.be.oneOf([201]); });",
+                  "const json = pm.response.json();",
+                  "pm.test('success = true', function () { pm.expect(json.success).to.eql(true); });",
+                  "pm.collectionVariables.set('providerId', json.user.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Signup Provider (Newspaper)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/signup/provider",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "signup",
+                "provider"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Hawker\",\n  \"email\": \"news{{$timestamp}}@gmail.com\",\n  \"password\": \"12345678\",\n  \"contact\": \"03221234567\",\n  \"city\": \"Rawalpindi\",\n  \"area\": \"Satellite Town\",\n  \"latitude\": 33.605,\n  \"longitude\": 73.065,\n  \"service\": \"newspaper\",\n  \"servicePrice\": 60,\n  \"newspapers\": [\n    \"dawn\",\n    \"jang\"\n  ],\n  \"days\": [\n    \"Mon\",\n    \"Tue\",\n    \"Wed\",\n    \"Thu\",\n    \"Fri\",\n    \"Sat\",\n    \"Sun\"\n  ],\n  \"timeSlots\": [\n    {\n      \"from\": \"05:00\",\n      \"to\": \"08:00\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP status ok', function () { pm.expect(pm.response.code).to.be.oneOf([201]); });",
+                  "const json = pm.response.json();",
+                  "pm.test('success = true', function () { pm.expect(json.success).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Signup Provider (Garbage)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/signup/provider",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "signup",
+                "provider"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Collector\",\n  \"email\": \"garb{{$timestamp}}@gmail.com\",\n  \"password\": \"12345678\",\n  \"contact\": \"03331234567\",\n  \"city\": \"Rawalpindi\",\n  \"area\": \"Satellite Town\",\n  \"latitude\": 33.602,\n  \"longitude\": 73.064,\n  \"service\": \"garbage\",\n  \"servicePrice\": 30,\n  \"weight\": 20,\n  \"days\": [\n    \"Mon\",\n    \"Tue\",\n    \"Wed\",\n    \"Thu\",\n    \"Fri\",\n    \"Sat\",\n    \"Sun\"\n  ],\n  \"timeSlots\": [\n    {\n      \"from\": \"09:00\",\n      \"to\": \"12:00\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP status ok', function () { pm.expect(pm.response.code).to.be.oneOf([201]); });",
+                  "const json = pm.response.json();",
+                  "pm.test('success = true', function () { pm.expect(json.success).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Login Resident",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{residentEmail}}\",\n  \"password\": \"12345678\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP status ok', function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "const json = pm.response.json();",
+                  "pm.test('success = true', function () { pm.expect(json.success).to.eql(true); });",
+                  "pm.test('role = resident', function () { pm.expect(json.user.role).to.eql('resident'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Login Provider",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{providerEmail}}\",\n  \"password\": \"12345678\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP status ok', function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "const json = pm.response.json();",
+                  "pm.test('success = true', function () { pm.expect(json.success).to.eql(true); });",
+                  "pm.test('role = provider', function () { pm.expect(json.user.role).to.eql('provider'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. Login (wrong password) -> 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{residentEmail}}\",\n  \"password\": \"wrongpass\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected error 401', function () { pm.expect(pm.response.code).to.eql(401); });",
+                  "pm.test('success = false', function () { pm.expect(pm.response.json().success).to.eql(false); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8. Signup (duplicate email) -> 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/signup/resident",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "signup",
+                "resident"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dup\",\n  \"email\": \"{{residentEmail}}\",\n  \"password\": \"12345678\",\n  \"contact\": \"03001234567\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected error 409', function () { pm.expect(pm.response.code).to.eql(409); });",
+                  "pm.test('success = false', function () { pm.expect(pm.response.json().success).to.eql(false); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9. Signup (bad email) -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/signup/resident",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "signup",
+                "resident"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Bad\",\n  \"email\": \"bad@yahoo.com\",\n  \"password\": \"12345678\",\n  \"contact\": \"03001234567\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected error 400', function () { pm.expect(pm.response.code).to.eql(400); });",
+                  "pm.test('success = false', function () { pm.expect(pm.response.json().success).to.eql(false); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Requests",
+      "item": [
+        {
+          "name": "1. Match Providers",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests/match",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests",
+                "match"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"residentId\": \"{{residentId}}\",\n  \"service\": \"milkman\",\n  \"radius\": 10,\n  \"startDate\": \"{{startDate}}\",\n  \"groups\": [\n    {\n      \"days\": [\n        \"Mon\",\n        \"Tue\",\n        \"Wed\",\n        \"Thu\",\n        \"Fri\",\n        \"Sat\",\n        \"Sun\"\n      ],\n      \"from\": \"08:00\",\n      \"to\": \"09:00\",\n      \"milkProducts\": [\n        \"cow\",\n        \"ghee\"\n      ],\n      \"productQtys\": {\n        \"cow\": 1,\n        \"ghee\": 0.5\n      }\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Pehle 'Auth' folder chalayein taake provider maujood ho."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP status ok', function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "const json = pm.response.json();",
+                  "pm.test('success = true', function () { pm.expect(json.success).to.eql(true); });",
+                  "pm.test('provider mila', function () { pm.expect(json.providers.length).to.be.above(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Create Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"residentId\": \"{{residentId}}\",\n  \"providerId\": \"{{providerId}}\",\n  \"service\": \"milkman\",\n  \"radius\": 10,\n  \"startDate\": \"{{startDate}}\",\n  \"notes\": \"Subah jaldi dein\",\n  \"groups\": [\n    {\n      \"days\": [\n        \"Mon\",\n        \"Tue\",\n        \"Wed\",\n        \"Thu\",\n        \"Fri\",\n        \"Sat\",\n        \"Sun\"\n      ],\n      \"from\": \"08:00\",\n      \"to\": \"09:00\",\n      \"milkProducts\": [\n        \"cow\",\n        \"ghee\"\n      ],\n      \"productQtys\": {\n        \"cow\": 1,\n        \"ghee\": 0.5\n      }\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP status ok', function () { pm.expect(pm.response.code).to.be.oneOf([201]); });",
+                  "const json = pm.response.json();",
+                  "pm.test('success = true', function () { pm.expect(json.success).to.eql(true); });",
+                  "pm.collectionVariables.set('requestId', json.requestId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Create Request (duplicate pending) -> 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"residentId\": \"{{residentId}}\",\n  \"providerId\": \"{{providerId}}\",\n  \"service\": \"milkman\",\n  \"radius\": 10,\n  \"startDate\": \"{{startDate}}\",\n  \"groups\": [\n    {\n      \"days\": [\n        \"Mon\",\n        \"Tue\",\n        \"Wed\",\n        \"Thu\",\n        \"Fri\",\n        \"Sat\",\n        \"Sun\"\n      ],\n      \"from\": \"08:00\",\n      \"to\": \"09:00\",\n      \"milkProducts\": [\n        \"cow\",\n        \"ghee\"\n      ],\n      \"productQtys\": {\n        \"cow\": 1,\n        \"ghee\": 0.5\n      }\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected error 409', function () { pm.expect(pm.response.code).to.eql(409); });",
+                  "pm.test('success = false', function () { pm.expect(pm.response.json().success).to.eql(false); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Respond - Accept",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests/{{requestId}}/respond",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests",
+                "{{requestId}}",
+                "respond"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"providerId\": \"{{providerId}}\",\n  \"action\": \"accept\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP status ok', function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "const json = pm.response.json();",
+                  "pm.test('success = true', function () { pm.expect(json.success).to.eql(true); });",
+                  "pm.test('accepted', function () { pm.expect(json.status).to.eql('accepted'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Respond again -> 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests/{{requestId}}/respond",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests",
+                "{{requestId}}",
+                "respond"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"providerId\": \"{{providerId}}\",\n  \"action\": \"accept\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected error 409', function () { pm.expect(pm.response.code).to.eql(409); });",
+                  "pm.test('success = false', function () { pm.expect(pm.response.json().success).to.eql(false); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Respond - wrong provider -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests/{{requestId}}/respond",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "requests",
+                "{{requestId}}",
+                "respond"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"providerId\": 999999,\n  \"action\": \"accept\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected error 403', function () { pm.expect(pm.response.code).to.eql(403); });",
+                  "pm.test('success = false', function () { pm.expect(pm.response.json().success).to.eql(false); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Notifications",
+      "item": [
+        {
+          "name": "Provider notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/{{providerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "{{providerId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP status ok', function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "const json = pm.response.json();",
+                  "pm.test('success = true', function () { pm.expect(json.success).to.eql(true); });",
+                  "pm.test('notifications array', function () { pm.expect(json.notifications).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resident notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/{{residentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "{{residentId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP status ok', function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "const json = pm.response.json();",
+                  "pm.test('success = true', function () { pm.expect(json.success).to.eql(true); });",
+                  "pm.test('notifications array', function () { pm.expect(json.notifications).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Subscriptions",
+      "item": [
+        {
+          "name": "1. Resident schedule",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscriptions/resident/{{residentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscriptions",
+                "resident",
+                "{{residentId}}"
+              ]
+            },
+            "description": "Request accept hone ke baad chalayein. subscriptionId automatic save hoti hai."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP status ok', function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "const json = pm.response.json();",
+                  "pm.test('success = true', function () { pm.expect(json.success).to.eql(true); });",
+                  "if (json.subscriptions.length) pm.collectionVariables.set('subscriptionId', json.subscriptions[0].id);",
+                  "pm.test('schedule bana', function () { pm.expect(json.subscriptions.length).to.be.above(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Provider schedule",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscriptions/provider/{{providerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscriptions",
+                "provider",
+                "{{providerId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP status ok', function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "const json = pm.response.json();",
+                  "pm.test('success = true', function () { pm.expect(json.success).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Provider - I am arrived",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscriptions/{{subscriptionId}}/arrive",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscriptions",
+                "{{subscriptionId}}",
+                "arrive"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"providerId\": \"{{providerId}}\",\n  \"date\": \"{{today}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP status ok', function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "const json = pm.response.json();",
+                  "pm.test('success = true', function () { pm.expect(json.success).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Provider - Service done",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscriptions/{{subscriptionId}}/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscriptions",
+                "{{subscriptionId}}",
+                "complete"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"providerId\": \"{{providerId}}\",\n  \"date\": \"{{today}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP status ok', function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "const json = pm.response.json();",
+                  "pm.test('success = true', function () { pm.expect(json.success).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Arrive (wrong provider) -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscriptions/{{subscriptionId}}/arrive",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscriptions",
+                "{{subscriptionId}}",
+                "arrive"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"providerId\": 999999,\n  \"date\": \"{{today}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected error 403', function () { pm.expect(pm.response.code).to.eql(403); });",
+                  "pm.test('success = false', function () { pm.expect(pm.response.json().success).to.eql(false); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Deliveries",
+      "item": [
+        {
+          "name": "1. Resident deliveries (deliveryId save)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/deliveries/resident/{{residentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deliveries",
+                "resident",
+                "{{residentId}}"
+              ]
+            },
+            "description": "'Subscriptions' folder ke arrive/complete ke baad chalayein."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP status ok', function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "const json = pm.response.json();",
+                  "pm.test('success = true', function () { pm.expect(json.success).to.eql(true); });",
+                  "if (json.deliveries.length) pm.collectionVariables.set('deliveryId', json.deliveries[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Resident note",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/deliveries/{{deliveryId}}/note",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deliveries",
+                "{{deliveryId}}",
+                "note"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"residentId\": \"{{residentId}}\",\n  \"note\": \"Gate ke bahar rakh dein\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP status ok', function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "const json = pm.response.json();",
+                  "pm.test('success = true', function () { pm.expect(json.success).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Resident note again -> 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/deliveries/{{deliveryId}}/note",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deliveries",
+                "{{deliveryId}}",
+                "note"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"residentId\": \"{{residentId}}\",\n  \"note\": \"dobara\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected error 409', function () { pm.expect(pm.response.code).to.eql(409); });",
+                  "pm.test('success = false', function () { pm.expect(pm.response.json().success).to.eql(false); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Provider deliveries",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/deliveries/provider/{{providerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deliveries",
+                "provider",
+                "{{providerId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP status ok', function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "const json = pm.response.json();",
+                  "pm.test('success = true', function () { pm.expect(json.success).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Skips",
+      "item": [
+        {
+          "name": "1. Skip tomorrow",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/skips",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "skips"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"residentId\": \"{{residentId}}\",\n  \"items\": [\n    {\n      \"subscriptionId\": \"{{subscriptionId}}\",\n      \"date\": \"{{tomorrow}}\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP status ok', function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "const json = pm.response.json();",
+                  "pm.test('success = true', function () { pm.expect(json.success).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Provider arrive on skipped day -> 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscriptions/{{subscriptionId}}/arrive",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscriptions",
+                "{{subscriptionId}}",
+                "arrive"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"providerId\": \"{{providerId}}\",\n  \"date\": \"{{tomorrow}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected error 409', function () { pm.expect(pm.response.code).to.eql(409); });",
+                  "pm.test('success = false', function () { pm.expect(pm.response.json().success).to.eql(false); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Skip past day -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/skips",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "skips"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"residentId\": \"{{residentId}}\",\n  \"items\": [\n    {\n      \"subscriptionId\": \"{{subscriptionId}}\",\n      \"date\": \"2020-01-01\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expected error 400', function () { pm.expect(pm.response.code).to.eql(400); });",
+                  "pm.test('success = false', function () { pm.expect(pm.response.json().success).to.eql(false); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Provider notifications (skip dikhe)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/{{providerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "{{providerId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP status ok', function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "const json = pm.response.json();",
+                  "pm.test('success = true', function () { pm.expect(json.success).to.eql(true); });",
+                  "pm.test('skip notification', function () { pm.expect(json.notifications.some(n => n.type === 'service_skipped')).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

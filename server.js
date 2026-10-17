@@ -1,65 +1,54 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
+const mysql = require('mysql2/promise');
 
-const authRoutes = require('./Auth/auth.routes');
-const requestRoutes = require('./service_request/request.routes');
+async function startServer() {
+  const dbName = process.env.DB_NAME;
+  const dbUser = process.env.DB_USER || 'root';
+  const dbPassword = process.env.DB_PASSWORD || '';
+  const dbHost = process.env.DB_HOST || 'localhost';
+  const dbPort = Number(process.env.DB_PORT) || 3306;
 
-const db = require('./db');
-
-const app = express();
-
-app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000' }));
-app.use(express.json());
-
-// test route
-app.get('/api/health', (req, res) => {
-  res.json({ success: true, message: 'Backend chal raha hai' });
-});
-
-// login + signup  ->  /api/auth/...
-app.use('/api/auth', authRoutes);
-
-// service request flow  ->  /api/requests, /api/notifications, /api/subscriptions
-app.use('/api', requestRoutes);
-
-// Creates what the new features need if it is missing (same as database_update_v5.sql),
-// so you do not have to run any SQL by hand.
-async function ensureSchema() {
   try {
-    const [subs] = await db.query(
-      "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'subscriptions'"
-    );
-    if (subs.length > 0 && !subs.some((c) => c.COLUMN_NAME === 'slot_index')) {
-      await db.query('ALTER TABLE subscriptions ADD COLUMN slot_index TINYINT NULL');
-    }
-    const [ps] = await db.query(
-      "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'provider_service'"
-    );
-    if (ps.length > 0 && !ps.some((c) => c.COLUMN_NAME === 'weight')) {
-      await db.query('ALTER TABLE provider_service ADD COLUMN weight DECIMAL(6,1) NULL AFTER newspaper_types');
-    }
-    if (subs.length > 0) {
-      await db.query(`CREATE TABLE IF NOT EXISTS deliveries (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        subscription_id INT NOT NULL,
-        delivery_date DATE NOT NULL,
-        arrived_at DATETIME NULL,
-        completed_at DATETIME NULL,
-        resident_note VARCHAR(500) NULL,
-        noted_at DATETIME NULL,
-        UNIQUE KEY uq_sub_date (subscription_id, delivery_date),
-        FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE CASCADE
-      )`);
-    }
+    // 1. Sab se pehle raw connection se database create karein (agar nahi hai)
+    const connection = await mysql.createConnection({
+      host: dbHost,
+      port: dbPort,
+      user: dbUser,
+      password: dbPassword,
+    });
+    await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
+    await connection.end();
+    console.log(`\n✅ Database "${dbName}" tayyar hai.`);
+
+    // 2. Database banne ke BAAD models aur routes load karein
+    const db = require('./models');
+    const apiRoutes = require('./routes');
+
+    const app = express();
+    app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000' }));
+    app.use(express.json());
+    app.use('/api', apiRoutes);
+
+    // 3. Tables banayein (sirf wo jo nahi hain). Model change karne par DB_ALTER=true ke sath chalayein.
+    await db.sequelize.sync({ alter: process.env.DB_ALTER === 'true' });
+    console.log('✅ Tables sync ho gayi.');
+
+    const port = process.env.PORT || 4000;
+    app.listen(port, () => {
+      console.log(`🚀 Backend running on http://localhost:${port}\n`);
+    });
   } catch (error) {
-    console.log('Could not check the database tables:', error.message);
+    console.error('\n❌ Server start karne mein error aaya:', error.message);
+    const code = error.code || (error.original && error.original.code);
+    if (!dbName) console.error('👉 .env file main DB_NAME likhein.');
+    else if (code === 'ECONNREFUSED') console.error('👉 MySQL server band hai ya port galat hai. Workbench main connection kholkar check karein (DB_HOST / DB_PORT).');
+    else if (code === 'ER_ACCESS_DENIED_ERROR') console.error('👉 User ya password galat hai. .env ke DB_USER / DB_PASSWORD ko Workbench wali connection se milayein.');
+    else if (code === 'ER_NOT_SUPPORTED_AUTH_MODE') console.error("👉 Workbench main ye chalayein: ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'apna_password';");
+    console.error('');
+    process.exit(1);
   }
 }
 
-const port = process.env.PORT || 4000;
-ensureSchema().then(() => {
-  app.listen(port, () => {
-    console.log('Backend running on http://localhost:' + port);
-  });
-});
+startServer();

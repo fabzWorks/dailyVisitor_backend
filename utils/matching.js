@@ -1,27 +1,25 @@
-
-// matching.js  -  decides if a provider fits the resident's requirement
-
-const db = require('../db');
+// matching.js  -  faisla karta hai ke provider resident ki requirement se match karta hai ya nahi
+const { Op } = require('sequelize');
+const { ServiceRequest, Subscription } = require('../models');
 const { readJson, fixName, distanceKm, MILK_INFO, PAPER_LABEL } = require('./helpers');
 
-// Checks one provider. Returns { ok: true, distance } or { ok: false, reason }
+// Aik provider check karo. Wapis: { ok: true, distance } ya { ok: false, reason }
 function checkProvider(provider, service, groups, radiusKm, residentAddress) {
   // 1. same service?
   if (provider.service !== service) {
     return { ok: false, reason: 'different service (' + provider.service + ')' };
   }
 
-  const providerDays = String(provider.days || '').split(',').filter(Boolean);  // "Mon,Tue" -> ['Mon','Tue']
-  const slots = readJson(provider.time_slots, []);                              // [{from:'06:00', to:'09:00'}]
+  const providerDays = String(provider.days || '').split(',').filter(Boolean);
+  const slots = readJson(provider.timeSlots, []);
 
-  // old accounts have no days saved
   if (providerDays.length === 0) {
-    return { ok: false, reason: 'provider has NO service days saved (column "days" is empty) -> run the UPDATE for days' };
+    return { ok: false, reason: 'provider has NO service days saved' };
   }
 
   // 2. items
   if (service === 'milkman') {
-    const products = readJson(provider.milk_products, []);
+    const products = readJson(provider.milkProducts, []);
     const sells = products.map((p) => fixName(p.name));
     for (const g of groups) {
       for (const item of g.milkProducts) {
@@ -33,7 +31,7 @@ function checkProvider(provider, service, groups, radiusKm, residentAddress) {
     }
   }
   if (service === 'newspaper') {
-    const sells = readJson(provider.newspaper_types, []);
+    const sells = readJson(provider.newspaperTypes, []);
     for (const g of groups) {
       for (const paper of g.papers) {
         if (!sells.includes(paper)) {
@@ -42,9 +40,8 @@ function checkProvider(provider, service, groups, radiusKm, residentAddress) {
       }
     }
   }
-
   if (service === 'garbage') {
-    // "weight" = the most garbage (kg) this collector takes in one pickup
+    // "weight" = aik pickup main sab se ziada kg
     const maxKg = Number(provider.weight) || 0;
     if (maxKg > 0) {
       for (const g of groups) {
@@ -53,14 +50,13 @@ function checkProvider(provider, service, groups, radiusKm, residentAddress) {
     }
   }
 
-  // 3 + 4. days and time (checked group by group)
+  // 3 + 4. din aur time (group by group)
   for (const g of groups) {
     for (const day of g.days) {
       if (!providerDays.includes(day)) {
         return { ok: false, reason: 'does not work on ' + day + ' (works on: ' + providerDays.join(',') + ')' };
       }
     }
-
     let timeFits = false;
     for (const slot of slots) {
       if (slot.from <= g.from && g.to <= slot.to) timeFits = true;
@@ -71,7 +67,7 @@ function checkProvider(provider, service, groups, radiusKm, residentAddress) {
     }
   }
 
-  // 5. distance  ->  radius rule is ON (radius 0 = no limit)
+  // 5. distance (radius 0 = koi limit nahi)
   let distance = null;
   const bothHaveLocation =
     residentAddress && residentAddress.latitude != null && provider.latitude != null;
@@ -88,32 +84,29 @@ function checkProvider(provider, service, groups, radiusKm, residentAddress) {
   return { ok: true, distance: distance };
 }
 
-// "07:30" -> 450  (minutes since midnight)
+// "07:30" -> 450 (raat 12 se minutes)
 function toMinutes(time) {
   const parts = time.split(':');
   return Number(parts[0]) * 60 + Number(parts[1]);
 }
 
-// ------------------------------------------------------------
-// 6. CAPACITY  -  max 6 residents in ONE HOUR
-
+// 6. CAPACITY  -  aik ghante main ziada se ziada 6 residents
 const PLACES_PER_HOUR = 6;
 const MINUTES_PER_PLACE = 10;
-
 
 function overlaps(aFrom, aTo, bFrom, bTo) {
   return toMinutes(aFrom) < toMinutes(bTo) && toMinutes(bFrom) < toMinutes(aTo);
 }
 
 async function checkCapacity(provider, groups) {
-  // all groups of the requests this provider already has (pending + accepted)
-  const [rows] = await db.query(
-    "SELECT groups_json FROM service_requests WHERE provider_id = ? AND status IN ('pending', 'accepted')",
-    [provider.id]
-  );
+  // provider ki pending + accepted requests ke saare groups
+  const requests = await ServiceRequest.findAll({
+    where: { providerId: provider.id, status: { [Op.in]: ['pending', 'accepted'] } },
+    attributes: ['groupsJson'],
+  });
   const oldGroups = [];
-  for (const row of rows) {
-    for (const g of readJson(row.groups_json, [])) oldGroups.push(g);
+  for (const row of requests) {
+    for (const g of readJson(row.groupsJson, [])) oldGroups.push(g);
   }
 
   for (const g of groups) {
@@ -133,22 +126,25 @@ async function checkCapacity(provider, groups) {
   return { full: false };
 }
 
-// Used when the provider ACCEPTS: gives the next free 10-minute place of that hour.
-// Returns { ok: true, slotIndex } (0 = first 10 minutes ... 5 = last 10 minutes)
-// or { ok: false, reason } when the hour is already full.
+// Provider ACCEPT kare to ghante main agli khali 10-minute ki jagah deta hai.
+// Wapis: { ok: true, slotIndex } (0 = pehle 10 min ... 5 = aakhri 10 min) ya { ok: false, reason }
 async function allotPlace(providerId, group, exceptRequestId) {
-  const [subs] = await db.query(
-    "SELECT days, from_time, to_time, slot_index FROM subscriptions WHERE provider_id = ? AND status <> 'Completed' AND request_id <> ?",
-    [providerId, exceptRequestId]
-  );
+  const subs = await Subscription.findAll({
+    where: {
+      providerId: providerId,
+      status: { [Op.ne]: 'Completed' },
+      requestId: { [Op.ne]: exceptRequestId },
+    },
+    attributes: ['days', 'fromTime', 'toTime', 'slotIndex'],
+  });
 
   const used = new Set();
   for (const day of group.days) {
     let count = 0;
     for (const sub of subs) {
-      if (sub.days.split(',').includes(day) && overlaps(sub.from_time, sub.to_time, group.from, group.to)) {
+      if (sub.days.split(',').includes(day) && overlaps(sub.fromTime, sub.toTime, group.from, group.to)) {
         count = count + 1;
-        if (sub.slot_index != null) used.add(Number(sub.slot_index));
+        if (sub.slotIndex != null) used.add(Number(sub.slotIndex));
       }
     }
     if (count >= PLACES_PER_HOUR) {
@@ -165,7 +161,6 @@ async function allotPlace(providerId, group, exceptRequestId) {
 async function providerMatches(provider, service, groups, radiusKm, residentAddress) {
   let result = checkProvider(provider, service, groups, radiusKm, residentAddress);
 
- 
   if (result.ok) {
     const capacity = await checkCapacity(provider, groups);
     if (capacity.full) result = { ok: false, reason: capacity.reason };

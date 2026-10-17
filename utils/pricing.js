@@ -1,24 +1,19 @@
-// ============================================================
-// pricing.js  -  exact money calculation
+// pricing.js  -  paison ka exact hisaab
 //
-// We look at the REAL calendar for 30 days starting from the start date.
-// Example: start Mon 5 Oct, days Mon+Tue+Wed
-//          -> Mon x5, Tue x5, Wed x4 = 14 deliveries
-// Cost of one item = quantity x rate x number of deliveries
-// ============================================================
+// Start date se 30 din ka asli calendar dekha jata hai.
+// Misal: start Mon 5 Oct, din Mon+Tue+Wed -> Mon x5, Tue x5, Wed x4 = 14 deliveries
+// Aik item ka kharcha = quantity x rate x deliveries
 const { readJson, fixName, MILK_INFO, PAPER_LABEL } = require('./helpers');
 
 const BILLING_DAYS = 30;
 const DAY_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const JS_DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']; // JavaScript: 0 = Sunday
+const JS_DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-// round to 2 decimals
 function round2(number) {
   return Math.round(number * 100) / 100;
 }
 
-// How many times does each weekday come in the 30 days?  -> { Mon: 5, Tue: 5, ... }
-// Also returns the last date of the period.
+// 30 din main har weekday kitni baar aata hai -> { Mon: 5, Tue: 5, ... } aur aakhri date
 function countWeekdays(startDate) {
   const counts = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 };
   const [year, month, day] = startDate.split('-').map(Number);
@@ -32,19 +27,19 @@ function countWeekdays(startDate) {
   return { counts: counts, lastDate: lastDate };
 }
 
-// Provider's price for one item
+// Provider ka aik item ka rate
 function rateOf(provider, service, itemId) {
   if (service === 'milkman') {
-    const products = readJson(provider.milk_products, []);
+    const products = readJson(provider.milkProducts, []);
     for (const p of products) {
       if (fixName(p.name) === itemId) return Number(p.price) || 0;
     }
     return 0;
   }
-  return Number(provider.service_price) || 0; // newspaper (per copy) / garbage (per kg)
+  return Number(provider.servicePrice) || 0; // newspaper (per copy) / garbage (per kg)
 }
 
-// Lines of one group: [{ label, qty, unit, rate }]
+// Aik group ki lines: [{ label, qty, unit, rate }]
 function itemLines(provider, service, group) {
   const lines = [];
 
@@ -65,7 +60,7 @@ function itemLines(provider, service, group) {
   return lines;
 }
 
-// The full calculation shown on the summary screen
+// Summary screen ka poora hisaab
 function buildBreakdown(provider, service, groups, startDate) {
   const weekdays = countWeekdays(startDate);
   const groupResults = [];
@@ -73,7 +68,6 @@ function buildBreakdown(provider, service, groups, startDate) {
   let total = 0;
 
   for (const group of groups) {
-    // sort days Mon..Sun and count deliveries
     const days = DAY_ORDER.filter((d) => group.days.includes(d));
     const perDay = [];
     let deliveries = 0;
@@ -82,7 +76,6 @@ function buildBreakdown(provider, service, groups, startDate) {
       deliveries += weekdays.counts[d];
     }
 
-    // money for each item
     const lines = [];
     let perDelivery = 0;
     let groupTotal = 0;
@@ -113,7 +106,7 @@ function buildBreakdown(provider, service, groups, startDate) {
   };
 }
 
-// Short text of the items, e.g. "Cow Milk: 1L, Cheese: 0.5kg"
+// Items ka chhota text, e.g. "Cow Milk: 1L, Cheese: 0.5kg"
 function describeGroup(service, group) {
   if (service === 'milkman') {
     const parts = [];
